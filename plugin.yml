@@ -1,0 +1,10 @@
+name: Rush
+main: com.speecker.rush.Rush
+version: 1.0
+commands:
+  rush:
+    description: Main Rush Command
+    usage: /rush <command>
+  setrushzone:
+    description: Select a Cuboid as the Rush-Zone
+    usage: /setzone
