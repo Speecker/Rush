@@ -18,7 +18,7 @@ public class Itemspawnpoint {
 	public double x, y, z;
 	
 	public static Itemspawnpoint load(String base, String worldname){
-		String filename=base+"_"+worldname+".yml";
+		String filename = createpath(base, worldname);
 		try {
 			YamlReader reader=new YamlReader(new FileReader(filename));
 			return reader.read(Itemspawnpoint.class);
@@ -36,7 +36,7 @@ public class Itemspawnpoint {
 	
 	public void save(String base){
 	
-	String filename=base+"_"+this.worldname+".yml";	
+	String filename	= createpath(base, worldname);
 		try{
 			(new File(filename)).getParentFile().mkdirs();
 			YamlWriter writer=new YamlWriter(new FileWriter(filename));
@@ -58,4 +58,15 @@ public class Itemspawnpoint {
 		
 		return itemspawn;
 	}
+	
+	public static boolean exists (String base,String worldname ){
+		
+		return (new File(createpath(base, worldname))).exists();
+		
+	}
+	
+	private static String createpath (String base, String worldname){
+		return base+"_"+worldname+".yml";
+	}
+	
 }

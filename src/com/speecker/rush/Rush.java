@@ -1,5 +1,9 @@
 package com.speecker.rush;
 
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+
 import org.bukkit.Location;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
@@ -8,18 +12,26 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 public final class Rush extends JavaPlugin {
 
-	private final static String itemspawnfilered = "./plugins/Rush/Itemspawn/Red";
-	private final static String itemspawnfileblue = "./plugins/Rush/Itemspawn/Blue";
-	private final static String itemspawnfilegreen = "./plugins/Rush/Itemspawn/Green";
-	private final static String itemspawnfileyellow = "./plugins/Rush/Itemspawn/Yellow";
-
 	private final static String villagertraderweapons = "./plugins/Rush/Villagertrader/Weapons";
 	private final static String villagertraderprotection = "./plugins/Rush/Villagertrader/Protection";
 	private final static String villagertradermaterial = "./plugins/Rush/Villagertrader/Material";
 
 	public boolean isRunning = false;
+	public HashMap<String, String> itemspawnfiles = new HashMap<String, String>();
+	public List<Droptask> tasks = new LinkedList<Droptask>();
+
+	public Rush() {
+		
+		String[] teamcolors = { "Red", "Blue", "Green", "Yellow" };
+		for (String color : teamcolors) {
+			itemspawnfiles.put(color, "./plugins/Rush/Itemspawn/" + color);
+		}
+	}
 
 	public void onEnable() {
+		
+		this.getServer().getScheduler().runTaskTimer(this, new Warstatechecker(this), 40l, 20l);
+
 		getLogger()
 				.info("\033[1;32mRush wurde aktiviert! | Rush has been enabled!\033[0m");
 	}
@@ -34,7 +46,14 @@ public final class Rush extends JavaPlugin {
 
 		info(cmd.getName());
 
-		if (cmd.getName().equals("rush")) {
+		if (cmd.getName().equals("rush") || cmd.getName().equals("ru") || cmd.getName().equals("Rush")) {
+			Player player = null;
+			if (sender instanceof Player) {
+				player = (Player) sender;
+			} else {
+				info("only player are able to execute rush commands", sender);
+				return false;
+			}
 
 			if (subcommand(args, "setitemspawn")) {
 
@@ -45,6 +64,12 @@ public final class Rush extends JavaPlugin {
 				settrader(args, label, label, sender);
 
 			} else if (subcommand(args, "startitd")) {
+				Location location = player.getLocation();
+				String world = location.getWorld().getName();
+				createDroptasks(world);
+
+			} else if (subcommand(args, "stopitd")) {
+				this.stopdroptasks(player.getLocation().getWorld().getName());
 
 			} else {
 
@@ -111,10 +136,10 @@ public final class Rush extends JavaPlugin {
 			info("Material-Trader an aktuelle Position gesetzt! | Material-Trader set to this location!",
 					sender);
 		} else {
-//			Deutch (German)
+			// Deutch (German)
 			info("Bitte gib einen Trade-Typ an: Waffen(weapons)/Schutz(protection)/Material(material)",
 					sender);
-//			English
+			// English
 			info("Please choose one of these Trade-Types: Weapons(weapons)/Protection(protection)/Material(material)",
 					sender);
 
@@ -140,19 +165,19 @@ public final class Rush extends JavaPlugin {
 			CommandSender sender) {
 
 		String filename = null;
-		if (subcommand(args, "ret")) {
-			filename = itemspawnfilered;
+		if (subcommand(args, "red")) {
+			filename = this.itemspawnfiles.get("Red");
 		} else if (subcommand(args, "blue")) {
-			filename = itemspawnfileblue;
+			filename = this.itemspawnfiles.get("Blue");
 		} else if (subcommand(args, "green")) {
-			filename = itemspawnfilegreen;
+			filename = this.itemspawnfiles.get("Green");
 		} else if (subcommand(args, "yellow")) {
-			filename = itemspawnfileyellow;
+			filename = this.itemspawnfiles.get("Yellow");
 		} else {
-//			Deutsch (German)
+			// Deutsch (German)
 			info("Bitte gib eine der Team-Farben an: Rot(red)/Blau(blue)/Gruen(green)/Gelb(yellow)",
 					sender);
-//			English
+			// English
 			info("Please choose one of these Team-Colors: Rot(red)/Blau(blue)/Gruen(green)/Gelb(yellow)",
 					sender);
 
@@ -211,6 +236,66 @@ public final class Rush extends JavaPlugin {
 
 		return found;
 
+	}
+
+	private void createDroptasks(String world) {
+
+		for (String itemspawnfile : this.itemspawnfiles.values()) {
+			if (Itemspawnpoint.exists(itemspawnfile, world)) {
+
+				// For more dropable Items add another Droptask here
+
+				Itemspawnpoint itemspawnpoint = Itemspawnpoint.load(
+						itemspawnfile, world);
+				startdroptask(itemspawnpoint, 3, 336);
+				startdroptask(itemspawnpoint, 5, 265);
+				startdroptask(itemspawnpoint, 8, 266);
+
+			}
+
+		}
+
+	}
+
+	/**
+	 * 
+	 * @param itemspawnpoint
+	 * @param period
+	 *            in seconds
+	 * @param itemtype
+	 */
+	private void startdroptask(Itemspawnpoint itemspawnpoint, int period,
+			int itemtype) {
+
+		Droptask droptask = new Droptask(this, itemspawnpoint, period * 20l,
+				itemtype);
+		droptask.start();
+		// 20 Ticks = 1 Sec.
+		this.tasks.add(droptask);
+
+	}
+
+	public void warstatechanged(String worldname, boolean active) {
+
+		if (active) {
+
+			this.createDroptasks(worldname);
+
+		} else {
+
+			stopdroptasks(worldname);
+
+		}
+
+	}
+
+	private void stopdroptasks(String world) {
+
+		for (Droptask task : this.tasks) {
+			if (task.getWorldName().equals(world)) {
+				task.cancel();
+			}
+		}
 	}
 
 }
